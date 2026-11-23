@@ -1,27 +1,25 @@
-# main.py -- news-image-20261123 v7 entrypoint
-# Rebuilds entry.png from build_entry.py (pure standard library) and
-# writes it to $MAKEFUN_OUTPUT_DIR (default /output). Deterministic:
-# two runs write byte-identical files.
-import hashlib
+"""Copy entry.png next to this file to /output/entry.png.
+
+Standard library only (os, shutil). No network, no clock, no randomness,
+no environment input. Fails if the entry is over the 1 MiB limit.
+"""
+
 import os
-import sys
+import shutil
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-
-from build_entry import build_png
+HERE = os.path.dirname(os.path.abspath(__file__))
+SRC = os.path.join(HERE, "entry.png")
+DST = "/output/entry.png"
+MAX_BYTES = 1048576
 
 
 def main():
-    out_dir = os.environ.get("MAKEFUN_OUTPUT_DIR", "/output")
-    os.makedirs(out_dir, exist_ok=True)
-    data = build_png()
-    if len(data) > 1048576:
-        raise SystemExit("entry.png too large: %d bytes" % len(data))
-    path = os.path.join(out_dir, "entry.png")
-    with open(path, "wb") as f:
-        f.write(data)
-    print("wrote %s (%d bytes, sha256 %s)"
-          % (path, len(data), hashlib.sha256(data).hexdigest()))
+    os.makedirs("/output", exist_ok=True)
+    shutil.copyfile(SRC, DST)
+    size = os.path.getsize(DST)
+    if size > MAX_BYTES:
+        raise SystemExit("entry.png too large: %d > %d bytes" % (size, MAX_BYTES))
+    print("copied %s -> %s (%d bytes)" % (SRC, DST, size))
 
 
 if __name__ == "__main__":

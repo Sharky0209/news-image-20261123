@@ -4,11 +4,12 @@
 [![rank](https://make.fun/badge/news-image-20261123/Sharky0209/news-image-20261123/rank.svg)](https://make.fun/bounty/news-image-20261123/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=news-image-20261123)
 [![reward](https://make.fun/badge/news-image-20261123/Sharky0209/news-image-20261123/reward.svg)](https://make.fun/bounty/news-image-20261123?utm_source=github&utm_medium=readme&utm_campaign=news-image-20261123)
 
-A dense newspaper front page summing up the world's news of
+A newspaper front page summing up the world's news of
 **Monday 23 November 2026** in a single 1024×1024 image:
-six main stories, a data band, a hand-drawn KOSPI intraday chart,
-a by-the-numbers panel, seven more Monday-verified headlines,
-and the day's also-rans — every item dated to 23 November 2026.
+six verified Monday stories, led by a dominant KOSPI story with a
+hand-drawn intraday chart, three secondary stories in a row, and a
+bottom strip with the two remaining stories, the day's also-rans,
+and the sources line — every item dated to 23 November 2026.
 
 ## The day, in brief
 
@@ -21,13 +22,15 @@ and the day's also-rans — every item dated to 23 November 2026.
 
 ## How it is built
 
-`main.py` is the entrypoint: it calls `build_entry.py`, which draws the
-whole page with a hand-rolled 5×7 bitmap font and a pure-Python PNG
-encoder — standard library only, no network, no Pillow, no external
-images. The program runs twice and writes byte-identical output.
+`build_entry.py` draws the whole page with Pillow and the system
+DejaVu fonts — fixed strings and fixed geometry, no network, no
+clock, no randomness. `main.py` is the entrypoint: standard library
+only (`os`, `shutil`), it copies `entry.png` next to itself to
+`/output/entry.png` and fails if the file is over the 1 MiB limit.
 
 ```sh
-MAKEFUN_OUTPUT_DIR=out python3 main.py   # writes out/entry.png
+python3 build_entry.py   # writes entry.png (1024x1024)
+python3 main.py          # copies entry.png to /output/entry.png
 ```
 
 ## Verification
@@ -35,30 +38,24 @@ MAKEFUN_OUTPUT_DIR=out python3 main.py   # writes out/entry.png
 Deterministic output — two runs write identical bytes:
 
 ```sh
-MAKEFUN_OUTPUT_DIR=out1 python3 main.py
-MAKEFUN_OUTPUT_DIR=out2 python3 main.py
-sha256sum out1/entry.png out2/entry.png   # hashes match
-```
-
-Standard-library-only check (no third-party imports):
-
-```sh
-cd /tmp && MAKEFUN_OUTPUT_DIR=/tmp/v7std python3 -S /path/to/repo/main.py
+python3 build_entry.py && sha256sum entry.png
+python3 build_entry.py && sha256sum entry.png   # hashes match
 ```
 
 ## What changed in v7
 
-v6 was six cards and three also-rans with too much white space. v7 keeps
-the six verified stories word for word and adds: a hero treatment for the
-KOSPI story with a hand-drawn intraday chart, a five-cell data band, a
-by-the-numbers bar panel, and seven extra Monday-verified headlines
-(Germany, Spain, Denmark, Iran, energy, Britain, Armenia).
+v6 was six uniform small cards plus a footer — a wall of small text.
+v7 keeps the six verified stories word for word and rebuilds the
+layout to read at a glance: a dominant KOSPI lead story with a
+hand-drawn intraday chart (previous close to the intraday low of
+about −5.8%, no invented data points), three secondary cards
+(Europe, Disaster, Security), and a bottom strip with the Diplomacy
+and Politics stories, the ALSO line, and the sources line.
 
 ## Sources
 
-Yonhap, Reuters, CNA, BBC, Kyiv Independent, Al Jazeera — plus Reuters,
-AFP, Bloomberg Tax and WION for the extra headlines. All items happened,
-or were first reported, on 23 November 2026.
+Yonhap, Reuters, CNA, BBC, Kyiv Independent, Al Jazeera. All items
+happened, or were first reported, on 23 November 2026.
 
 ## Bounty
 

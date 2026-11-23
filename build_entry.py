@@ -1,70 +1,72 @@
-"""news-image-20261123: draw one 1024x1024 PNG summing up world news of
-Monday 23 November 2026, to /output/entry.png.
+"""Build the news-image-20261123 entry: one 1024x1024 PNG.
 
-Stories verified 2026-11-23, two independent sources each.
-Deterministic: no network, no randomness, no clock, no environment input.
-The stories are embedded below as constants; the program only draws.
-Run: python3 build_entry.py  (writes /output/entry.png, creating /output
-if needed). Python 3.13 compatible; needs Pillow and DejaVu fonts
-(system fonts). Build script only: the submitted entrypoint main.py is
-stdlib-only and copies the entry.png this script produces, because the
-server runs the entrypoint with no third-party packages installed.
+Deterministic: no network, no randomness, no clock, no environment
+input. Draws six verified stories for Monday 23 November 2026 plus an
+"Also today" footer, using Pillow and the DejaVu fonts.
 """
 
 import os
+
 from PIL import Image, ImageDraw, ImageFont
 
+OUTPUT_DIR = "/output"
+OUTPUT_PATH = os.path.join(OUTPUT_DIR, "entry.png")
+
 W, H = 1024, 1024
-NAVY = (15, 42, 68)
 PAPER = (247, 243, 232)
-CARD = (255, 255, 255)
-INK = (20, 28, 36)
-MUTED = (90, 100, 112)
-RULE = (196, 52, 40)
+NAVY = (15, 42, 68)
 GOLD = (212, 160, 60)
+LIGHT_BLUE = (196, 214, 232)
+RED = (196, 52, 40)
+INK = (20, 28, 36)
+BODY = (52, 62, 74)
+CARD_EDGE = (214, 206, 188)
+SOURCE_GREY = (150, 170, 190)
 
 FONT_DIR = "/usr/share/fonts/truetype/dejavu"
-FALLBACK_DIR = "/usr/share/fonts"
-
-
-def font(name, size):
-    for base in (FONT_DIR, FALLBACK_DIR):
-        path = os.path.join(base, name) if base == FONT_DIR else name
-        if base == FONT_DIR:
-            path = os.path.join(FONT_DIR, name)
-            if os.path.exists(path):
-                return ImageFont.truetype(path, size)
-        else:
-            try:
-                return ImageFont.truetype(name, size)
-            except OSError:
-                pass
-    return ImageFont.load_default(size=size)
-
-
-SERIF_B = lambda s: font("DejaVuSerif-Bold.ttf", s)
-SANS_B = lambda s: font("DejaVuSans-Bold.ttf", s)
-SANS = lambda s: font("DejaVuSans.ttf", s)
 
 STORIES = [
-    ("CLIMATE", "COP31 talks collapse with no deal",
-     "UN climate talks in Antalya end with no deal after record overtime; "
-     "fossil-fuel language is blocked and the EU rejects the final draft."),
-    ("POLITICS", "Democrats clinch House majority",
-     "Democrats win at least 258 House seats, their largest majority since "
-     "1992, after a North Carolina win; four races are still uncalled."),
-    ("MIDDLE EAST", "Trump 'inclined' to resume Iran strikes",
-     "Trump tells Fox News he is inclined to resume strikes after the New "
-     "Year if no deal is reached, as talks with Tehran stall."),
-    ("EUROPE", "Russian strikes hit Kyiv region",
-     "An overnight drone strike collapses part of a five-storey block in "
-     "Dymer as rescuers search the rubble; the region marks a day of mourning."),
-    ("MARKETS", "US seeks answers on Nvidia chip sales",
-     "Treasury chief Bessent says the US wants answers on Nvidia's chip "
-     "sales to China and who ran compliance, after its ex-CEO resigned."),
-    ("DISASTER", "24 body bags found after factory fire",
-     "Rescuers recover remains in 24 body bags from a candy factory fire "
-     "in Banten, Indonesia; the toll is unclear as the search resumes Monday."),
+    (
+        "CLIMATE",
+        "COP31 talks collapse with no deal",
+        "UN climate talks in Antalya end with no deal after record "
+        "overtime; fossil-fuel language is blocked and the EU rejects "
+        "the final draft.",
+    ),
+    (
+        "POLITICS",
+        "Democrats clinch House majority",
+        "Democrats win at least 258 House seats, their largest "
+        "majority since 1992, after a North Carolina win; four races "
+        "are still uncalled.",
+    ),
+    (
+        "MIDDLE EAST",
+        "Trump 'inclined' to resume Iran strikes",
+        "Trump tells Fox News he is inclined to resume strikes after "
+        "the New Year if no deal is reached, as talks with Tehran stall.",
+    ),
+    (
+        "EUROPE",
+        "Russian strikes hit Kyiv region",
+        "An overnight drone strike collapses part of a five-storey "
+        "block in Dymer as rescuers search the rubble; the region "
+        "marks a day of mourning.",
+    ),
+    (
+        "MARKETS",
+        "US seeks answers on Nvidia chip sales",
+        "Treasury chief Bessent says the US wants answers on Nvidia's "
+        "chip sales to China and who ran compliance, after its ex-CEO "
+        "resigned.",
+    ),
+    (
+        "DISASTER",
+        "24 body bags found after factory fire",
+        "Rescuers recover remains in 24 body bags from a candy "
+        "factory fire in Banten, Indonesia; the toll is unclear as "
+        "the search resumes Monday.",
+    ),
 ]
 
 ALSO = [
@@ -74,84 +76,122 @@ ALSO = [
 ]
 
 
-def wrap(draw, text, fnt, width):
-    words = text.split(" ")
-    lines, cur = [], ""
-    for word in words:
-        trial = (cur + " " + word).strip()
-        if draw.textlength(trial, font=fnt) <= width:
-            cur = trial
-        else:
-            if cur:
-                lines.append(cur)
-            cur = word
-    if cur:
-        lines.append(cur)
+def load_font(name, size):
+    """Load a DejaVu font from the system dir, falling back gracefully."""
+    path = os.path.join(FONT_DIR, name)
+    if os.path.isfile(path):
+        return ImageFont.truetype(path, size)
+    try:
+        return ImageFont.truetype(name, size)
+    except OSError:
+        return ImageFont.load_default()
+
+
+def wrap(draw, text, font, max_width):
+    """Greedy word wrap by measured width; returns a list of lines."""
+    lines = []
+    for paragraph in text.split("\n"):
+        words = paragraph.split(" ")
+        line = ""
+        for word in words:
+            trial = word if not line else line + " " + word
+            if draw.textlength(trial, font=font) <= max_width or not line:
+                line = trial
+            else:
+                lines.append(line)
+                line = word
+        if line:
+            lines.append(line)
     return lines
 
 
-def draw_card(draw, x, y, w, h, tag, headline, body):
-    draw.rounded_rectangle([x, y, x + w, y + h], radius=10, fill=CARD,
-                           outline=(214, 206, 188), width=2)
-    draw.rectangle([x, y, x + w, y + 6], fill=RULE)
-    tag_f = SANS_B(17)
-    draw.text((x + 18, y + 18), tag, font=tag_f, fill=RULE)
-    head_f = SANS_B(29)
-    lines = wrap(draw, headline, head_f, w - 36)
+def fit_text(draw, text, font_name, start_size, min_size, max_width, max_lines):
+    """Shrink the font until the text fits in max_lines; never truncate."""
+    size = start_size
+    while size >= min_size:
+        font = load_font(font_name, size)
+        lines = wrap(draw, text, font, max_width)
+        if len(lines) <= max_lines:
+            return font, lines
+        size -= 1
+    raise RuntimeError("text does not fit in %d lines even at %dpt: %r"
+                       % (max_lines, min_size, text))
+
+
+def draw_card(draw, base, x, y, label, title, body_text):
+    card_w, card_h = 476, 232
+    # Card background + red top band on a tile, clipped to rounded corners.
+    tile = Image.new("RGBA", (card_w, card_h), (0, 0, 0, 0))
+    td = ImageDraw.Draw(tile)
+    td.rounded_rectangle([0, 0, card_w - 1, card_h - 1], radius=10,
+                         fill=(255, 255, 255, 255),
+                         outline=CARD_EDGE + (255,), width=2)
+    # Red band flush with the card's top edge (visual check: the inset
+    # band left a pale strip above it); the rounded mask clips the corners.
+    td.rectangle([0, 0, card_w - 1, 5], fill=RED + (255,))
+    mask = Image.new("L", (card_w, card_h), 0)
+    ImageDraw.Draw(mask).rounded_rectangle(
+        [0, 0, card_w - 1, card_h - 1], radius=10, fill=255)
+    base.paste(tile, (x, y), mask)
+
+    inner_w = card_w - 36
+    label_font = load_font("DejaVuSans-Bold.ttf", 17)
+    draw.text((x + 18, y + 18), label, font=label_font, fill=RED)
+
+    title_font, title_lines = fit_text(
+        draw, title, "DejaVuSans-Bold.ttf", 29, 24, inner_w, 2)
     ty = y + 48
-    for line in lines[:2]:
-        draw.text((x + 18, ty), line, font=head_f, fill=INK)
+    for line in title_lines:
+        draw.text((x + 18, ty), line, font=title_font, fill=INK)
         ty += 34
-    # Shrink the body font until it fits in 4 lines, so a longer story
-    # never gets silently clipped by the card.
-    body_size = 20
-    body_f = SANS(body_size)
-    blines = wrap(draw, body, body_f, w - 36)
-    while len(blines) > 4 and body_size > 16:
-        body_size -= 1
-        body_f = SANS(body_size)
-        blines = wrap(draw, body, body_f, w - 36)
+
+    body_font, body_lines = fit_text(
+        draw, body_text, "DejaVuSans.ttf", 20, 16, inner_w, 4)
     by = ty + 8
-    for line in blines[:4]:
-        draw.text((x + 18, by), line, font=body_f, fill=(52, 62, 74))
+    for line in body_lines:
+        draw.text((x + 18, by), line, font=body_font, fill=BODY)
         by += 27
 
 
 def main():
     img = Image.new("RGB", (W, H), PAPER)
-    d = ImageDraw.Draw(img)
+    draw = ImageDraw.Draw(img)
 
-    # Header
-    d.rectangle([0, 0, W, 172], fill=NAVY)
-    d.rectangle([0, 172, W, 178], fill=GOLD)
-    d.text((36, 22), "THE WORLD IN ONE IMAGE", font=SANS_B(20), fill=GOLD)
-    d.text((36, 48), "WORLD NEWS", font=SERIF_B(84), fill=(255, 255, 255))
-    d.text((36, 138), "MONDAY 23 NOVEMBER 2026  •  6 STORIES  •  ONE DAY",
-           font=SANS_B(22), fill=(196, 214, 232))
+    # Header.
+    draw.rectangle([0, 0, W - 1, 171], fill=NAVY)
+    draw.rectangle([0, 172, W - 1, 177], fill=GOLD)
+    draw.text((36, 22), "THE WORLD IN ONE IMAGE",
+              font=load_font("DejaVuSans-Bold.ttf", 20), fill=GOLD)
+    draw.text((36, 48), "WORLD NEWS",
+              font=load_font("DejaVuSerif-Bold.ttf", 84), fill=(255, 255, 255))
+    draw.text((36, 138),
+              "MONDAY 23 NOVEMBER 2026  \u2022  6 STORIES  \u2022  ONE DAY",
+              font=load_font("DejaVuSans-Bold.ttf", 22), fill=LIGHT_BLUE)
 
-    # Story grid: 2 columns x 3 rows
+    # News grid: 2 columns x 3 rows.
     gx, gy = 24, 198
-    cw, ch, gap = 476, 232, 24
-    for i, (tag, head, body) in enumerate(STORIES):
-        cx = gx + (i % 2) * (cw + gap)
-        cy = gy + (i // 2) * (ch + 14)
-        draw_card(d, cx, cy, cw, ch, tag, head, body)
+    for i, (label, title, body_text) in enumerate(STORIES):
+        cx = gx + (i % 2) * (476 + 24)
+        cy = gy + (i // 2) * (232 + 14)
+        draw_card(draw, img, cx, cy, label, title, body_text)
 
-    # Footer (ALSO kept to one short line, never clipped)
-    fy = 198 + 3 * 232 + 2 * 14 + 8  # 930
-    d.rectangle([0, fy, W, H], fill=NAVY)
-    d.text((36, fy + 8), "ALSO TODAY", font=SANS_B(18), fill=GOLD)
-    also_f = SANS(16)
-    also_lines = wrap(d, "  •  ".join(ALSO), also_f, W - 72)
-    assert len(also_lines) == 1, also_lines
-    d.text((36, fy + 34), also_lines[0], font=also_f, fill=(255, 255, 255))
-    d.text((36, fy + 64), "Sources: CNN, Reuters, AP, Xinhua, SCMP, Al Jazeera  •  23 November 2026",
-           font=SANS(15), fill=(150, 170, 190))
+    # Footer.
+    draw.rectangle([0, 930, W - 1, H - 1], fill=NAVY)
+    draw.text((36, 938), "ALSO TODAY",
+              font=load_font("DejaVuSans-Bold.ttf", 18), fill=GOLD)
+    also_text = "  \u2022  ".join(ALSO)
+    also_font = load_font("DejaVuSans.ttf", 16)
+    assert draw.textlength(also_text, font=also_font) <= W - 72, \
+        "ALSO line does not fit on one line"
+    draw.text((36, 964), also_text, font=also_font, fill=(255, 255, 255))
+    draw.text((36, 994),
+              "Sources: CNN, Reuters, AP, Xinhua, SCMP, Al Jazeera  "
+              "\u2022  23 November 2026",
+              font=load_font("DejaVuSans.ttf", 15), fill=SOURCE_GREY)
 
-    out = "/output/entry.png"
-    os.makedirs("/output", exist_ok=True)
-    img.save(out, format="PNG", optimize=True)
-    print("wrote " + out)
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    img.save(OUTPUT_PATH, optimize=True)
+    print(OUTPUT_PATH)
 
 
 if __name__ == "__main__":

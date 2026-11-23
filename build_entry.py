@@ -159,7 +159,8 @@ def main():
         d.line([(plot_x0, gy), (plot_x1, gy)], fill=GRID, width=1)
         d.text((668 - text_w(f_grid, lab), gy - 7), lab,
                font=f_grid, fill=MUTED)
-    open_x = plot_x0 + 36
+    open_x = plot_x0 + 84  # +84 so "Previous close" and "09:00 open"
+    # axis labels fit side by side, each centred under its own point.
     trough_x = (plot_x0 + plot_x1) // 2
     pts = [(plot_x0, int(round(py(0)))),
            (open_x, int(round(py(-2.77)))),
@@ -175,8 +176,12 @@ def main():
     d.line([(plot_x0, plot_bot), (plot_x1, plot_bot)],
            fill=OUTLINE, width=1)
     f_axis = font(False, 12)
-    d.text((plot_x0, plot_bot + 4), "09:00 open",
-           font=f_axis, fill=MUTED)
+    prev_lab = "Previous close"
+    d.text((plot_x0 - text_w(f_axis, prev_lab) / 2, plot_bot + 4),
+           prev_lab, font=f_axis, fill=MUTED)
+    open_lab = "09:00 open"
+    d.text((open_x - text_w(f_axis, open_lab) / 2, plot_bot + 4),
+           open_lab, font=f_axis, fill=MUTED)
     close_lab = "15:30 close (KST)"
     d.text((plot_x1 - text_w(f_axis, close_lab), plot_bot + 4),
            close_lab, font=f_axis, fill=MUTED)
@@ -231,13 +236,13 @@ def main():
     assert len(lines) <= 2, lines
     y = draw_lines(d, 56, y, lines, f_sb, INK, 22)
     y += 8
-    d.text((56, y), "POLITICS — Burnham to defend 'landmark' EU deal",
+    d.text((56, y), "POLITICS — Burnham defends 'landmark' EU deal",
            font=f_sh, fill=NAVY)
     y += 24
-    lines = wrap("The UK prime minister is to tell MPs the Brussels deal "
-                 "is a choice between 'a broken status quo or change'; "
-                 "opponents dispute the government's projected gain of up "
-                 "to £17bn a year by 2040.", f_sb, 912)
+    lines = wrap("Burnham told MPs Treasury estimates put the gain at up "
+                 "to £17bn a year by 2040; Badenoch challenged the figure "
+                 "at the CBI, saying 'could be' was doing a lot of heavy "
+                 "lifting.", f_sb, 912)
     assert len(lines) <= 2, lines
     y = draw_lines(d, 56, y, lines, f_sb, INK, 22)
     y += 8

@@ -1,86 +1,36 @@
-"""Build the news-image-20261123 entry: one 1024x1024 PNG.
+"""Draw the 23 November 2026 world-news image (1024x1024 PNG).
 
 Deterministic: no network, no randomness, no clock, no environment
-input. Draws six verified stories for Monday 23 November 2026 plus an
-"Also today" footer, using Pillow and the DejaVu fonts.
+input. All six stories were verified as Monday 23 November events or
+first reports before this file was written. Run: python3 build_entry.py
 """
 
 import os
 
 from PIL import Image, ImageDraw, ImageFont
 
-OUTPUT_DIR = "/output"
-OUTPUT_PATH = os.path.join(OUTPUT_DIR, "entry.png")
-
-W, H = 1024, 1024
+WIDTH = 1024
+HEIGHT = 1024
 PAPER = (247, 243, 232)
 NAVY = (15, 42, 68)
 GOLD = (212, 160, 60)
-LIGHT_BLUE = (196, 214, 232)
+PALE_BLUE = (196, 214, 232)
 RED = (196, 52, 40)
 INK = (20, 28, 36)
 BODY = (52, 62, 74)
-CARD_EDGE = (214, 206, 188)
-SOURCE_GREY = (150, 170, 190)
+CARD_BORDER = (214, 206, 188)
+FOOTER_NOTE = (150, 170, 190)
 
 FONT_DIR = "/usr/share/fonts/truetype/dejavu"
 
-STORIES = [
-    (
-        "CLIMATE",
-        "COP31 talks collapse with no deal",
-        "UN climate talks in Antalya end with no deal after record "
-        "overtime; fossil-fuel language is blocked and the EU rejects "
-        "the final draft.",
-    ),
-    (
-        "POLITICS",
-        "Democrats clinch House majority",
-        "Democrats win at least 258 House seats, their largest "
-        "majority since 1992, after a North Carolina win; four races "
-        "are still uncalled.",
-    ),
-    (
-        "MIDDLE EAST",
-        "Trump 'inclined' to resume Iran strikes",
-        "Trump tells Fox News he is inclined to resume strikes after "
-        "the New Year if no deal is reached, as talks with Tehran stall.",
-    ),
-    (
-        "EUROPE",
-        "Russian strikes hit Kyiv region",
-        "An overnight drone strike collapses part of a five-storey "
-        "block in Dymer as rescuers search the rubble; the region "
-        "marks a day of mourning.",
-    ),
-    (
-        "MARKETS",
-        "US seeks answers on Nvidia chip sales",
-        "Treasury chief Bessent says the US wants answers on Nvidia's "
-        "chip sales to China and who ran compliance, after its ex-CEO "
-        "resigned.",
-    ),
-    (
-        "DISASTER",
-        "24 body bags found after factory fire",
-        "Rescuers recover remains in 24 body bags from a candy "
-        "factory fire in Banten, Indonesia; the toll is unclear as "
-        "the search resumes Monday.",
-    ),
-]
-
-ALSO = [
-    "Libya: drones hit Russian warship",
-    "Delta delays 1,000+ Atlanta flights",
-    "Alcaraz wins first ATP Finals title",
-]
-
 
 def load_font(name, size):
-    """Load a DejaVu font from the system dir, falling back gracefully."""
+    """Load a DejaVu font from the system directory, then by name."""
     path = os.path.join(FONT_DIR, name)
-    if os.path.isfile(path):
+    try:
         return ImageFont.truetype(path, size)
+    except OSError:
+        pass
     try:
         return ImageFont.truetype(name, size)
     except OSError:
@@ -88,7 +38,7 @@ def load_font(name, size):
 
 
 def wrap(draw, text, font, max_width):
-    """Greedy word wrap by measured width; returns a list of lines."""
+    """Greedy word wrap, measuring each candidate line for real."""
     lines = []
     for paragraph in text.split("\n"):
         words = paragraph.split(" ")
@@ -105,48 +55,92 @@ def wrap(draw, text, font, max_width):
     return lines
 
 
-def fit_text(draw, text, font_name, start_size, min_size, max_width, max_lines):
-    """Shrink the font until the text fits in max_lines; never truncate."""
-    size = start_size
-    while size >= min_size:
-        font = load_font(font_name, size)
+def fit_body(draw, text, max_width, max_lines=4):
+    """Shrink the body font (20 -> 16) until it fits in max_lines."""
+    for size in (20, 19, 18, 17, 16):
+        font = load_font("DejaVuSans.ttf", size)
         lines = wrap(draw, text, font, max_width)
         if len(lines) <= max_lines:
             return font, lines
-        size -= 1
-    raise RuntimeError("text does not fit in %d lines even at %dpt: %r"
-                       % (max_lines, min_size, text))
+    raise RuntimeError("body text does not fit in %d lines: %r" % (max_lines, text))
 
 
-def draw_card(draw, base, x, y, label, title, body_text):
-    card_w, card_h = 476, 232
-    # Card background + red top band on a tile, clipped to rounded corners.
-    tile = Image.new("RGBA", (card_w, card_h), (0, 0, 0, 0))
-    td = ImageDraw.Draw(tile)
-    td.rounded_rectangle([0, 0, card_w - 1, card_h - 1], radius=10,
-                         fill=(255, 255, 255, 255),
-                         outline=CARD_EDGE + (255,), width=2)
-    # Red band flush with the card's top edge (visual check: the inset
-    # band left a pale strip above it); the rounded mask clips the corners.
-    td.rectangle([0, 0, card_w - 1, 5], fill=RED + (255,))
-    mask = Image.new("L", (card_w, card_h), 0)
-    ImageDraw.Draw(mask).rounded_rectangle(
-        [0, 0, card_w - 1, card_h - 1], radius=10, fill=255)
-    base.paste(tile, (x, y), mask)
+STORIES = [
+    (
+        "MARKETS",
+        "KOSPI dives 5% as Seoul vows to act",
+        "South Korea's benchmark falls about 5% in Monday's tech sell-off; "
+        "the finance minister says a contingency plan is ready.",
+    ),
+    (
+        "EUROPE",
+        "Kyiv region mourns as Dymer rescue goes on",
+        "The Kyiv region marks a day of mourning after a drone strike "
+        "collapses part of a five-storey block in Dymer; rescuers pull a "
+        "79-year-old woman out alive as the search goes on.",
+    ),
+    (
+        "DISASTER",
+        "Indonesia confirms 24 dead in factory fire",
+        "Indonesia confirms 24 people died in a candy factory fire in "
+        "Banten; rescuers search the wreckage for about 30 still missing.",
+    ),
+    (
+        "SECURITY",
+        "NATO meets over missiles in Polish airspace",
+        "NATO's council meets in Brussels after Russian missiles and a "
+        "drone crossed into Poland; Warsaw seeks stronger air defences "
+        "on the eastern flank.",
+    ),
+    (
+        "DIPLOMACY",
+        "Nepal PM holds talks with Modi in Delhi",
+        "Balendra Shah meets Narendra Modi on his first bilateral trip "
+        "abroad; the leaders launch a new Ayodhya\u2013Janakpur train.",
+    ),
+    (
+        "POLITICS",
+        "Burnham defends 'landmark' EU deal",
+        "The UK prime minister tells MPs the Brussels deal is a choice "
+        "between 'a broken status quo or change'; opponents dispute his "
+        "\u00a317bn growth claim.",
+    ),
+]
 
-    inner_w = card_w - 36
+ALSO = [
+    "Ganges: talks continue in Dhaka",
+    "Seoul eases buyback limits",
+    "Badenoch to attack EU deal at CBI",
+]
+
+
+def draw_card(draw, x, y, label, title, body_text):
+    w, h = 476, 232
+    draw.rounded_rectangle([x, y, x + w, y + h], radius=10,
+                           fill="white", outline=CARD_BORDER, width=2)
+    # Top red band, 6 px high, with rounded top corners: draw a 12 px
+    # tall rounded red block, then cover its lower half with card white
+    # so only the top 6 px stay red (single cover rect, no inset step).
+    draw.rounded_rectangle([x, y, x + w, y + 12], radius=10, fill=RED)
+    draw.rectangle([x, y + 6, x + w, y + 12], fill="white")
+    # Re-draw the card outline so the band sits inside the border.
+    draw.rounded_rectangle([x, y, x + w, y + h], radius=10,
+                           outline=CARD_BORDER, width=2)
+
     label_font = load_font("DejaVuSans-Bold.ttf", 17)
     draw.text((x + 18, y + 18), label, font=label_font, fill=RED)
 
-    title_font, title_lines = fit_text(
-        draw, title, "DejaVuSans-Bold.ttf", 29, 24, inner_w, 2)
+    title_font = load_font("DejaVuSans-Bold.ttf", 29)
+    text_w = w - 36
+    title_lines = wrap(draw, title, title_font, text_w)
+    assert len(title_lines) <= 2, "title over 2 lines: %r" % title
     ty = y + 48
     for line in title_lines:
         draw.text((x + 18, ty), line, font=title_font, fill=INK)
         ty += 34
 
-    body_font, body_lines = fit_text(
-        draw, body_text, "DejaVuSans.ttf", 20, 16, inner_w, 4)
+    body_font, body_lines = fit_body(draw, body_text, text_w)
+    assert len(body_lines) <= 4, "body over 4 lines: %r" % body_text
     by = ty + 8
     for line in body_lines:
         draw.text((x + 18, by), line, font=body_font, fill=BODY)
@@ -154,44 +148,43 @@ def draw_card(draw, base, x, y, label, title, body_text):
 
 
 def main():
-    img = Image.new("RGB", (W, H), PAPER)
+    img = Image.new("RGB", (WIDTH, HEIGHT), PAPER)
     draw = ImageDraw.Draw(img)
 
     # Header.
-    draw.rectangle([0, 0, W - 1, 171], fill=NAVY)
-    draw.rectangle([0, 172, W - 1, 177], fill=GOLD)
+    draw.rectangle([0, 0, WIDTH, 172], fill=NAVY)
+    draw.rectangle([0, 172, WIDTH, 178], fill=GOLD)
     draw.text((36, 22), "THE WORLD IN ONE IMAGE",
               font=load_font("DejaVuSans-Bold.ttf", 20), fill=GOLD)
     draw.text((36, 48), "WORLD NEWS",
-              font=load_font("DejaVuSerif-Bold.ttf", 84), fill=(255, 255, 255))
-    draw.text((36, 138),
-              "MONDAY 23 NOVEMBER 2026  \u2022  6 STORIES  \u2022  ONE DAY",
-              font=load_font("DejaVuSans-Bold.ttf", 22), fill=LIGHT_BLUE)
+              font=load_font("DejaVuSerif-Bold.ttf", 84), fill="white")
+    draw.text((36, 138), "MONDAY 23 NOVEMBER 2026  \u2022  6 STORIES  \u2022  ONE DAY",
+              font=load_font("DejaVuSans-Bold.ttf", 22), fill=PALE_BLUE)
 
-    # News grid: 2 columns x 3 rows.
-    gx, gy = 24, 198
+    # Story cards: 2 columns x 3 rows.
     for i, (label, title, body_text) in enumerate(STORIES):
-        cx = gx + (i % 2) * (476 + 24)
-        cy = gy + (i // 2) * (232 + 14)
-        draw_card(draw, img, cx, cy, label, title, body_text)
+        x = 24 + (i % 2) * (476 + 24)
+        y = 198 + (i // 2) * (232 + 14)
+        draw_card(draw, x, y, label, title, body_text)
 
     # Footer.
-    draw.rectangle([0, 930, W - 1, H - 1], fill=NAVY)
+    draw.rectangle([0, 930, WIDTH, HEIGHT], fill=NAVY)
     draw.text((36, 938), "ALSO TODAY",
               font=load_font("DejaVuSans-Bold.ttf", 18), fill=GOLD)
-    also_text = "  \u2022  ".join(ALSO)
     also_font = load_font("DejaVuSans.ttf", 16)
-    assert draw.textlength(also_text, font=also_font) <= W - 72, \
-        "ALSO line does not fit on one line"
-    draw.text((36, 964), also_text, font=also_font, fill=(255, 255, 255))
+    also_line = "  \u2022  ".join(ALSO)
+    assert draw.textlength(also_line, font=also_font) <= WIDTH - 72, \
+        "ALSO line overflows one line"
+    draw.text((36, 964), also_line, font=also_font, fill="white")
     draw.text((36, 994),
-              "Sources: CNN, Reuters, AP, Xinhua, SCMP, Al Jazeera  "
-              "\u2022  23 November 2026",
-              font=load_font("DejaVuSans.ttf", 15), fill=SOURCE_GREY)
+              "Sources: Yonhap, Reuters, CNA, BBC, Kyiv Independent, "
+              "Al Jazeera  \u2022  23 November 2026",
+              font=load_font("DejaVuSans.ttf", 15), fill=FOOTER_NOTE)
 
-    os.makedirs(OUTPUT_DIR, exist_ok=True)
-    img.save(OUTPUT_PATH, optimize=True)
-    print(OUTPUT_PATH)
+    os.makedirs("/output", exist_ok=True)
+    out = "/output/entry.png"
+    img.save(out, optimize=True)
+    print(out)
 
 
 if __name__ == "__main__":

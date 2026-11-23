@@ -138,8 +138,12 @@ def main():
     bottom = draw_lines(d, 64, split_y, body_lines, f_body, INK, 31)
     assert bottom <= 392, bottom
 
-    # Chart, right of the body. Only verified points: previous close
-    # (0%) and the intraday low (about -5.8%). No invented points.
+    # Chart, right of the body. Four verified points only, % vs the
+    # previous close (4,869.96): previous close 0% (left edge) ->
+    # open -2.77% at 09:00 (4,734.90) -> intraday trough -5.8%
+    # mid-session (4,586.80) -> close -3.31% at 15:30 (4,708.54).
+    # The trough's exact time is unverified, so it sits mid-session
+    # with no time label of its own.
     cx0, cx1 = 632, 960
     d.text((cx0, split_y), "KOSPI — INTRADAY MOVE (%)",
            font=font(True, 14), fill=NAVY)
@@ -155,12 +159,17 @@ def main():
         d.line([(plot_x0, gy), (plot_x1, gy)], fill=GRID, width=1)
         d.text((668 - text_w(f_grid, lab), gy - 7), lab,
                font=f_grid, fill=MUTED)
-    d.line([(plot_x0, int(round(py(0)))), (plot_x1, int(round(py(-5.8))))],
-           fill=NAVY, width=4)
-    ex, ey = plot_x1, int(round(py(-5.8)))
-    d.ellipse([plot_x0 - 4, int(round(py(0))) - 4,
-               plot_x0 + 4, int(round(py(0))) + 4], fill=NAVY)
-    d.ellipse([ex - 6, ey - 6, ex + 6, ey + 6], fill=GOLD)
+    open_x = plot_x0 + 36
+    trough_x = (plot_x0 + plot_x1) // 2
+    pts = [(plot_x0, int(round(py(0)))),
+           (open_x, int(round(py(-2.77)))),
+           (trough_x, int(round(py(-5.8)))),
+           (plot_x1, int(round(py(-3.31))))]
+    d.line(pts, fill=NAVY, width=4, joint="curve")
+    for (px, pyy) in (pts[0], pts[1], pts[3]):
+        d.ellipse([px - 4, pyy - 4, px + 4, pyy + 4], fill=NAVY)
+    tx, ty = pts[2]
+    d.ellipse([tx - 6, ty - 6, tx + 6, ty + 6], fill=GOLD)
     # Time axis: open/close endpoints only (KST). The time of the
     # intraday low is not marked — it is not a verified data point.
     d.line([(plot_x0, plot_bot), (plot_x1, plot_bot)],
@@ -183,10 +192,10 @@ def main():
          "The Kyiv region marks a day of mourning after a drone strike "
          "collapsed part of a five-storey block in Dymer; rescuers pull "
          "a 79-year-old woman out alive as the search goes on."),
-        ("DISASTER", "Indonesia adviser says 24 reported dead in factory fire",
-         "Presidential adviser Said Iqbal gives a toll of 24, while "
-         "rescuers say the recovered remains still require "
-         "identification."),
+        ("DISASTER", "Indonesia rescuers continue search after factory fire",
+         "Rescue teams searched the unstable Cikande factory site on "
+         "Monday; police say DNA testing is needed because recovered "
+         "remains cannot be identified visually."),
         ("SECURITY", "Kim says North Korea seeks security, not supremacy",
          "Kim Jong-un tells foreign envoys Pyongyang seeks neither "
          "hegemony nor expansion and defends its arms build-up as "
@@ -234,17 +243,16 @@ def main():
     y += 8
     d.rectangle([56, y, 968, y + 2], fill=GOLD)
     y += 10
-    f_al = font(True, 12)
-    f_ar = font(False, 12)
+    f_al = font(True, 14)
+    f_ar = font(False, 14)
     lab = "ALSO — "
     lab_w = text_w(f_al, lab)
     also_lines = wrap_first_narrow(
-        "Ganges: routine India–Bangladesh water-sharing review • Seoul "
-        "to ease buyback limits • Badenoch attacks EU deal at CBI",
+        "Seoul to ease buyback limits • Badenoch attacks EU deal at CBI",
         f_ar, 912 - lab_w, 912)
     assert len(also_lines) <= 1, also_lines
     d.text((56, y), lab, font=f_al, fill=NAVY)
-    y = draw_lines(d, 56 + lab_w, y, also_lines, f_ar, INK, 17)
+    y = draw_lines(d, 56 + lab_w, y, also_lines, f_ar, INK, 19)
     y += 8
     d.text((56, y),
            "Sources: Yonhap, Reuters, CNA, BBC, Kyiv Independent, "

@@ -1,23 +1,26 @@
-"""news-image-20261123 entrypoint: copy the prebuilt entry.png to /output.
+"""news-image-20261123 entrypoint.
 
-Stdlib only: the server runs this program as Python 3.13 with no
-third-party packages installed, so it must not import Pillow or anything
-else outside the standard library. The image itself is built by
-build_entry.py (Pillow + DejaVu, deterministic) and shipped in the
-repository as entry.png; this entrypoint only copies that file to the
-output directory. Running it twice writes byte-identical output.
+Stdlib-only: it copies the pre-built entry.png next to this file to
+/output/entry.png. All drawing lives in build_entry.py, which needs
+Pillow; the server runs this entrypoint with no third-party packages
+installed, so it must not import anything beyond the standard library.
 """
 
 import os
 import shutil
 
+SRC = os.path.join(os.path.dirname(os.path.abspath(__file__)), "entry.png")
+DST = "/output/entry.png"
+
 
 def main():
-    here = os.path.dirname(os.path.abspath(__file__))
-    src = os.path.join(here, "entry.png")
-    os.makedirs("/output", exist_ok=True)
-    shutil.copyfile(src, "/output/entry.png")
-    print("wrote /output/entry.png")
+    if not os.path.exists(SRC):
+        raise SystemExit("missing entry image: " + SRC)
+    os.makedirs(os.path.dirname(DST), exist_ok=True)
+    shutil.copyfile(SRC, DST)
+    if os.path.getsize(SRC) != os.path.getsize(DST):
+        raise SystemExit("copy incomplete: " + DST)
+    print("wrote " + DST)
 
 
 if __name__ == "__main__":

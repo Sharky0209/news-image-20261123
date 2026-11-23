@@ -1,7 +1,7 @@
 """news-image-20261123: draw one 1024x1024 PNG summing up world news of
 Monday 23 November 2026, to /output/entry.png.
 
-Stories verified 2026-11-23 11:xx CST, two independent sources each (see NEWS.md).
+Stories verified 2026-11-23, two independent sources each.
 Deterministic: no network, no randomness, no clock, no environment input.
 The stories are embedded below as constants; the program only draws.
 Run: python3 build_entry.py  (writes /output/entry.png, creating /output
@@ -16,7 +16,6 @@ from PIL import Image, ImageDraw, ImageFont
 
 W, H = 1024, 1024
 NAVY = (15, 42, 68)
-NAVY_LIGHT = (27, 68, 102)
 PAPER = (247, 243, 232)
 CARD = (255, 255, 255)
 INK = (20, 28, 36)
@@ -103,8 +102,15 @@ def draw_card(draw, x, y, w, h, tag, headline, body):
     for line in lines[:2]:
         draw.text((x + 18, ty), line, font=head_f, fill=INK)
         ty += 34
-    body_f = SANS(20)
+    # Shrink the body font until it fits in 4 lines, so a longer story
+    # never gets silently clipped by the card.
+    body_size = 20
+    body_f = SANS(body_size)
     blines = wrap(draw, body, body_f, w - 36)
+    while len(blines) > 4 and body_size > 16:
+        body_size -= 1
+        body_f = SANS(body_size)
+        blines = wrap(draw, body, body_f, w - 36)
     by = ty + 8
     for line in blines[:4]:
         draw.text((x + 18, by), line, font=body_f, fill=(52, 62, 74))

@@ -1,32 +1,38 @@
-"""Standard-library-only entry point for news-image-20261123 (v4).
+"""Stdlib-only entry point for news-image-20261123.
 
-The artwork is drawn by build_entry.py (Pillow). This file does no
-drawing, no network access and no image decoding: it only copies the
-pre-built entry.png sitting next to this script into /output/entry.png
-and verifies the copy byte-for-byte by size.
+The artwork itself is drawn by build_entry.py (Pillow). This file only
+copies the pre-built entry.png that sits next to this script into
+/output/entry.png, using nothing but the Python standard library.
 """
 
+import hashlib
 import os
 import shutil
 
 
 def main():
     here = os.path.dirname(os.path.abspath(__file__))
-    source = os.path.join(here, "entry.png")
-    if not os.path.isfile(source):
-        raise FileNotFoundError("entry.png not found next to main.py: %s" % source)
-    os.makedirs("/output", exist_ok=True)
-    dest = os.path.join("/output", "entry.png")
-    if os.path.abspath(source) == os.path.abspath(dest):
-        raise RuntimeError("source and destination are the same file: %s" % source)
-    shutil.copyfile(source, dest)
-    src_size = os.path.getsize(source)
-    dst_size = os.path.getsize(dest)
-    if src_size != dst_size:
-        raise RuntimeError(
-            "copy size mismatch: source %d bytes, dest %d bytes" % (src_size, dst_size)
+    src = os.path.join(here, "entry.png")
+    if not os.path.isfile(src):
+        raise FileNotFoundError("entry.png not found next to main.py: %s" % src)
+    out_dir = "/output"
+    os.makedirs(out_dir, exist_ok=True)
+    dst = os.path.join(out_dir, "entry.png")
+    shutil.copyfile(src, dst)
+    # Verify the copy byte-for-byte, not just by size: a same-size but
+    # different file must still fail loudly.
+    with open(src, "rb") as f:
+        src_hash = hashlib.sha256(f.read()).hexdigest()
+    with open(dst, "rb") as f:
+        dst_hash = hashlib.sha256(f.read()).hexdigest()
+    if src_hash != dst_hash:
+        raise ValueError(
+            "copy hash mismatch: source %s, destination %s" % (src_hash, dst_hash)
         )
-    print("%s (%d bytes)" % (dest, dst_size))
+    print(
+        "entry.png copied to %s (%d bytes, sha256 %s)"
+        % (dst, os.path.getsize(dst), dst_hash)
+    )
 
 
 if __name__ == "__main__":

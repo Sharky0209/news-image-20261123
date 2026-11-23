@@ -1,27 +1,58 @@
-"""Draw the news-image-20261123 entry: one 1024x1024 PNG.
+"""Draw the 23 November 2026 world-news image (1024x1024 PNG).
 
 Deterministic: no network, no randomness, no clock, no environment input.
-Layout is a newspaper front page: navy masthead, six story cards in a
-2x3 grid, navy footer with an ALSO TODAY line and a sources line.
+Run: python3 build_entry.py  ->  writes /output/entry.png
 """
 
 import os
 
 from PIL import Image, ImageDraw, ImageFont
 
-W = 1024
-H = 1024
+OUT_DIR = "/output"
+OUT_PATH = os.path.join(OUT_DIR, "entry.png")
+
 PAPER = (247, 243, 232)
 NAVY = (15, 42, 68)
 GOLD = (212, 160, 60)
+LIGHT_BLUE = (196, 214, 232)
 RED = (196, 52, 40)
 INK = (20, 28, 36)
 BODY = (52, 62, 74)
-LIGHT_BLUE = (196, 214, 232)
 CARD_BORDER = (214, 206, 188)
-SOURCE_GREY = (150, 170, 190)
+FOOTER_GREY = (150, 170, 190)
 
 FONT_DIR = "/usr/share/fonts/truetype/dejavu"
+
+
+def load_font(name, size):
+    """Load a DejaVu font from the system directory, then by name."""
+    path = os.path.join(FONT_DIR, name)
+    try:
+        return ImageFont.truetype(path, size)
+    except (OSError, IOError):
+        try:
+            return ImageFont.truetype(name, size)
+        except (OSError, IOError):
+            return ImageFont.load_default(size=size)
+
+
+def wrap(draw, text, font, max_width):
+    """Greedy word wrap by measured width; returns a list of lines."""
+    lines = []
+    for paragraph in text.split("\n"):
+        words = paragraph.split(" ")
+        line = ""
+        for word in words:
+            trial = word if not line else line + " " + word
+            if draw.textlength(trial, font=font) <= max_width or not line:
+                line = trial
+            else:
+                lines.append(line)
+                line = word
+        if line:
+            lines.append(line)
+    return lines
+
 
 STORIES = [
     (
@@ -39,15 +70,16 @@ STORIES = [
     ),
     (
         "DISASTER",
-        "Indonesia says 24 dead in factory fire",
-        "Indonesia says 24 people died in a candy factory fire in Banten; "
-        "rescuers search the wreckage for about 30 still missing.",
+        "Indonesia adviser says 24 dead in factory fire",
+        "Presidential adviser Said Iqbal puts the toll at 24; rescuers "
+        "continue searching the wreckage for missing workers.",
     ),
     (
         "SECURITY",
-        "NATO meets over missiles in Polish airspace",
-        "NATO's council meets in Brussels after Russian missiles crossed "
-        "into Poland; Warsaw seeks stronger air defences on the eastern flank.",
+        "Kim says North Korea seeks security, not supremacy",
+        "Kim Jong-un tells foreign envoys Pyongyang seeks neither hegemony "
+        "nor expansion and defends its arms build-up as self-defence, in "
+        "remarks reported by state media on Monday.",
     ),
     (
         "DIPLOMACY",
@@ -66,157 +98,101 @@ STORIES = [
 
 ALSO_ITEMS = [
     "Ganges: talks continue in Dhaka",
-    "Seoul eases buyback limits",
+    "Seoul to ease buyback limits",
     "Badenoch set to attack EU deal at CBI",
 ]
 
-SOURCES_LINE = (
-    "Sources: Yonhap, Reuters, CNA, BBC, Kyiv Independent, Al Jazeera"
-    "  \u2022  23 November 2026"
-)
 
-
-def load_font(filename, size):
-    """Load a DejaVu font from the system directory, with fallbacks."""
-    path = os.path.join(FONT_DIR, filename)
-    try:
-        return ImageFont.truetype(path, size)
-    except OSError:
-        pass
-    try:
-        return ImageFont.truetype(filename, size)
-    except OSError:
-        return ImageFont.load_default()
-
-
-def wrap_text(draw, text, font, max_width):
-    """Greedy word wrap by measured width. Returns a list of lines."""
-    lines = []
-    current = ""
-    for word in text.split(" "):
-        trial = word if not current else current + " " + word
-        if draw.textlength(trial, font=font) <= max_width or not current:
-            current = trial
-        else:
-            lines.append(current)
-            current = word
-    if current:
-        lines.append(current)
-    return lines
-
-
-def draw_card(draw, x, y, label, title, body, title_size):
-    card_w = 476
-    card_h = 232
-    draw.rounded_rectangle(
-        [x, y, x + card_w, y + card_h],
-        radius=10,
-        fill=(255, 255, 255),
-        outline=CARD_BORDER,
-        width=2,
-    )
-    # Red strip across the top of the card. Drawn as a rounded rectangle
-    # whose lower half is painted back to white, so the strip is 6px tall
-    # with top corners rounded to match the card (a plain rectangle's
-    # square corners poked outside the card outline).
-    draw.rounded_rectangle([x, y, x + card_w, y + 12], radius=10, fill=RED)
-    draw.rectangle([x, y + 6, x + card_w, y + 12], fill=(255, 255, 255))
-    draw.rounded_rectangle(
-        [x, y, x + card_w, y + card_h],
-        radius=10,
-        outline=CARD_BORDER,
-        width=2,
-    )
+def draw_card(draw, x, y, label, title, body_text):
+    w, h = 476, 232
+    # White card with rounded corners and a thin border.
+    draw.rounded_rectangle([x, y, x + w, y + h], radius=10,
+                           fill=(255, 255, 255), outline=CARD_BORDER, width=2)
+    # Red band, 6 px high. Visual check of the first render showed the
+    # rounded-band trick left tiny white notches at the card's top
+    # corners, so draw it as a straight band inset inside the border
+    # instead: clean ends, no corner artefacts.
+    draw.rectangle([x + 2, y + 2, x + w - 2, y + 8], fill=RED)
+    draw.rounded_rectangle([x, y, x + w, y + h], radius=10,
+                           outline=CARD_BORDER, width=2)
 
     label_font = load_font("DejaVuSans-Bold.ttf", 17)
     draw.text((x + 18, y + 18), label, font=label_font, fill=RED)
 
-    text_w = card_w - 36
-    title_font = load_font("DejaVuSans-Bold.ttf", title_size)
-    title_lines = wrap_text(draw, title, title_font, text_w)
-    if len(title_lines) > 2:
-        raise ValueError("title does not fit in 2 lines: %r" % title)
-    ty = y + 48
-    for line in title_lines:
-        draw.text((x + 18, ty), line, font=title_font, fill=INK)
-        ty += 34
-
-    # Body: shrink 20 -> 16 until it fits in 4 lines; never truncate.
-    body_font = None
-    body_lines = None
-    for size in (20, 19, 18, 17, 16):
-        font = load_font("DejaVuSans.ttf", size)
-        lines = wrap_text(draw, body, font, text_w)
-        if len(lines) <= 4:
-            body_font = font
-            body_lines = lines
+    # Title: DejaVuSans-Bold 26, adaptive down if it needs more than 2 lines.
+    text_w = w - 36
+    title_size = 26
+    while title_size > 18:
+        title_font = load_font("DejaVuSans-Bold.ttf", title_size)
+        title_lines = wrap(draw, title, title_font, text_w)
+        if len(title_lines) <= 2:
             break
-    if body_font is None:
-        raise ValueError("body does not fit in 4 lines even at 16pt: %r" % body)
-    by = ty + 8
-    for line in body_lines:
-        draw.text((x + 18, by), line, font=body_font, fill=BODY)
-        by += 27
+        title_size -= 1
+    title_font = load_font("DejaVuSans-Bold.ttf", title_size)
+    title_lines = wrap(draw, title, title_font, text_w)
+    assert len(title_lines) <= 2, "title needs more than 2 lines: %r" % title
+    title_y = y + 48
+    for i, line in enumerate(title_lines):
+        draw.text((x + 18, title_y + i * 34), line, font=title_font, fill=INK)
+
+    # Body: P2 fix -- start 6 px (not 8) below the title block and use a
+    # 26 px line height (not 27), so the last line keeps clear space
+    # above the bottom edge of the card.
+    title_block = len(title_lines) * 34
+    body_y = title_y + title_block + 6
+    body_size = 20
+    while body_size >= 16:
+        body_font = load_font("DejaVuSans.ttf", body_size)
+        body_lines = wrap(draw, body_text, body_font, text_w)
+        if len(body_lines) <= 4:
+            break
+        body_size -= 1
+    body_font = load_font("DejaVuSans.ttf", body_size)
+    body_lines = wrap(draw, body_text, body_font, text_w)
+    assert len(body_lines) <= 4, "body needs more than 4 lines: %r" % body_text
+    for i, line in enumerate(body_lines):
+        draw.text((x + 18, body_y + i * 26), line, font=body_font, fill=BODY)
 
 
 def main():
-    img = Image.new("RGB", (W, H), PAPER)
+    img = Image.new("RGB", (1024, 1024), PAPER)
     draw = ImageDraw.Draw(img)
 
-    # Masthead.
-    draw.rectangle([0, 0, W, 172], fill=NAVY)
-    draw.rectangle([0, 172, W, 178], fill=GOLD)
-    eyebrow_font = load_font("DejaVuSans-Bold.ttf", 20)
-    draw.text((36, 22), "THE WORLD IN ONE IMAGE", font=eyebrow_font, fill=GOLD)
-    title_font = load_font("DejaVuSerif-Bold.ttf", 84)
-    draw.text((36, 48), "WORLD NEWS", font=title_font, fill=(255, 255, 255))
-    date_font = load_font("DejaVuSans-Bold.ttf", 22)
-    draw.text(
-        (36, 138),
-        "MONDAY 23 NOVEMBER 2026  \u2022  6 STORIES  \u2022  ONE DAY",
-        font=date_font,
-        fill=LIGHT_BLUE,
-    )
+    # Top bar.
+    draw.rectangle([0, 0, 1024, 172], fill=NAVY)
+    draw.rectangle([0, 172, 1024, 178], fill=GOLD)
+    draw.text((36, 22), "THE WORLD IN ONE IMAGE",
+              font=load_font("DejaVuSans-Bold.ttf", 20), fill=GOLD)
+    draw.text((36, 48), "WORLD NEWS",
+              font=load_font("DejaVuSerif-Bold.ttf", 84), fill=(255, 255, 255))
+    draw.text((36, 138), "MONDAY 23 NOVEMBER 2026  \u2022  6 STORIES  \u2022  ONE DAY",
+              font=load_font("DejaVuSans-Bold.ttf", 22), fill=LIGHT_BLUE)
 
-    # Story cards: 2 columns x 3 rows.
-    # Title target is 29pt; the longer v5 KOSPI title only fits the 2-line
-    # cap at 26pt, so use the largest size (29..26) under which every title
-    # fits in 2 lines, applied uniformly so all cards match.
-    title_size = 26
-    for size in (29, 28, 27, 26):
-        font = load_font("DejaVuSans-Bold.ttf", size)
-        if all(
-            len(wrap_text(draw, t, font, 476 - 36)) <= 2 for _, t, _ in STORIES
-        ):
-            title_size = size
-            break
-    origin_x, origin_y = 24, 198
-    card_w, card_h = 476, 232
-    gap_x, gap_y = 24, 14
-    for i, (label, title, body) in enumerate(STORIES):
-        col = i % 2
-        row = i // 2
-        x = origin_x + col * (card_w + gap_x)
-        y = origin_y + row * (card_h + gap_y)
-        draw_card(draw, x, y, label, title, body, title_size)
+    # News grid: 2 columns x 3 rows, cards 476x232, gaps 24 / 14.
+    for idx, (label, title, body_text) in enumerate(STORIES):
+        col = idx % 2
+        row = idx // 2
+        x = 24 + col * (476 + 24)
+        y = 198 + row * (232 + 14)
+        draw_card(draw, x, y, label, title, body_text)
 
     # Footer.
-    draw.rectangle([0, 930, W, H], fill=NAVY)
-    also_head_font = load_font("DejaVuSans-Bold.ttf", 18)
-    draw.text((36, 938), "ALSO TODAY", font=also_head_font, fill=GOLD)
+    draw.rectangle([0, 930, 1024, 1024], fill=NAVY)
+    draw.text((36, 938), "ALSO TODAY",
+              font=load_font("DejaVuSans-Bold.ttf", 18), fill=GOLD)
+    also_text = "  \u2022  ".join(ALSO_ITEMS)
     also_font = load_font("DejaVuSans.ttf", 16)
-    also_line = "  \u2022  ".join(ALSO_ITEMS)
-    if draw.textlength(also_line, font=also_font) > W - 72:
-        raise ValueError("ALSO TODAY line does not fit on one line")
-    draw.text((36, 964), also_line, font=also_font, fill=(255, 255, 255))
-    sources_font = load_font("DejaVuSans.ttf", 15)
-    draw.text((36, 994), SOURCES_LINE, font=sources_font, fill=SOURCE_GREY)
+    also_width = draw.textlength(also_text, font=also_font)
+    assert also_width <= 1024 - 72, "ALSO line too wide: %d px" % also_width
+    draw.text((36, 964), also_text, font=also_font, fill=(255, 255, 255))
+    draw.text((36, 994),
+              "Sources: Yonhap, Reuters, CNA, BBC, Kyiv Independent, "
+              "Al Jazeera  \u2022  23 November 2026",
+              font=load_font("DejaVuSans.ttf", 15), fill=FOOTER_GREY)
 
-    out_dir = "/output"
-    os.makedirs(out_dir, exist_ok=True)
-    out_path = os.path.join(out_dir, "entry.png")
-    img.save(out_path, optimize=True)
-    print("wrote %s" % out_path)
+    os.makedirs(OUT_DIR, exist_ok=True)
+    img.save(OUT_PATH, optimize=True)
+    print(OUT_PATH)
 
 
 if __name__ == "__main__":

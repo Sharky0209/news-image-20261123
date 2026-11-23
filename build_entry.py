@@ -121,7 +121,7 @@ def main():
     y = label(d, 64, 134, "MARKETS — LEAD STORY", size=21)
     # Headline, two fixed lines, biggest type on the page.
     f_head = font(True, 44)
-    d.text((64, y + 6), "KOSPI dives over 5% intraday",
+    d.text((64, y + 6), "KOSPI dives 5.8% intraday",
            font=f_head, fill=NAVY)
     d.text((64, y + 58), "as Seoul vows to act",
            font=f_head, fill=NAVY)
@@ -129,7 +129,7 @@ def main():
 
     split_y = y + 132
     # Body, left of the chart.
-    body = ("South Korea's benchmark falls about 5% in Monday's "
+    body = ("South Korea's benchmark falls 5.8% in Monday's "
             "tech sell-off; finance minister says a contingency "
             "plan is ready.")
     f_body = font(False, 23)
@@ -143,7 +143,7 @@ def main():
     cx0, cx1 = 632, 960
     d.text((cx0, split_y), "KOSPI — INTRADAY MOVE (%)",
            font=font(True, 14), fill=NAVY)
-    plot_top, plot_bot = split_y + 20, split_y + 82
+    plot_top, plot_bot = split_y + 20, split_y + 70
     plot_x0, plot_x1 = 676, 952
 
     def py(v):
@@ -161,10 +161,20 @@ def main():
     d.ellipse([plot_x0 - 4, int(round(py(0))) - 4,
                plot_x0 + 4, int(round(py(0))) + 4], fill=NAVY)
     d.ellipse([ex - 6, ey - 6, ex + 6, ey + 6], fill=GOLD)
-    d.text((cx0, plot_bot + 6),
-           "Intraday low −5.8% vs previous close",
+    # Time axis: open/close endpoints only (KST). The time of the
+    # intraday low is not marked — it is not a verified data point.
+    d.line([(plot_x0, plot_bot), (plot_x1, plot_bot)],
+           fill=OUTLINE, width=1)
+    f_axis = font(False, 12)
+    d.text((plot_x0, plot_bot + 4), "09:00 open",
+           font=f_axis, fill=MUTED)
+    close_lab = "15:30 close (KST)"
+    d.text((plot_x1 - text_w(f_axis, close_lab), plot_bot + 4),
+           close_lab, font=f_axis, fill=MUTED)
+    d.text((cx0, plot_bot + 18),
+           "Intraday low −5.8%; closed −3.31%",
            font=font(True, 14), fill=NAVY)
-    assert plot_bot + 6 + 14 <= LY1 - 8
+    assert plot_bot + 18 + 14 <= LY1 - 8
 
     # ---- Secondary stories: EUROPE / DISASTER / SECURITY ----------------
     SY0, SY1 = 418, 764
@@ -173,9 +183,10 @@ def main():
          "The Kyiv region marks a day of mourning after a drone strike "
          "collapsed part of a five-storey block in Dymer; rescuers pull "
          "a 79-year-old woman out alive as the search goes on."),
-        ("DISASTER", "Indonesia adviser says 24 dead in factory fire",
-         "Presidential adviser Said Iqbal puts the toll at 24; rescuers "
-         "continue searching the wreckage for missing workers."),
+        ("DISASTER", "Indonesia adviser says 24 reported dead in factory fire",
+         "Presidential adviser Said Iqbal gives a toll of 24, while "
+         "rescuers say the recovered remains still require "
+         "identification."),
         ("SECURITY", "Kim says North Korea seeks security, not supremacy",
          "Kim Jong-un tells foreign envoys Pyongyang seeks neither "
          "hegemony nor expansion and defends its arms build-up as "
@@ -206,7 +217,7 @@ def main():
     y += 24
     f_sb = font(False, 16)
     lines = wrap("Balendra Shah meets Narendra Modi on his first bilateral "
-                 "trip abroad; the leaders launch a new Ayodhya–Janakpur "
+                 "trip abroad; the leaders flag off a new Ayodhya–Janakpur "
                  "train.", f_sb, 912)
     assert len(lines) <= 2, lines
     y = draw_lines(d, 56, y, lines, f_sb, INK, 22)
@@ -216,23 +227,24 @@ def main():
     y += 24
     lines = wrap("The UK prime minister is to tell MPs the Brussels deal "
                  "is a choice between 'a broken status quo or change'; "
-                 "opponents dispute his £17bn growth claim.", f_sb, 912)
+                 "opponents dispute the government's projected gain of up "
+                 "to £17bn a year by 2040.", f_sb, 912)
     assert len(lines) <= 2, lines
     y = draw_lines(d, 56, y, lines, f_sb, INK, 22)
     y += 8
     d.rectangle([56, y, 968, y + 2], fill=GOLD)
     y += 10
-    f_al = font(True, 14)
-    f_ar = font(False, 14)
+    f_al = font(True, 12)
+    f_ar = font(False, 12)
     lab = "ALSO — "
     lab_w = text_w(f_al, lab)
     also_lines = wrap_first_narrow(
-        "Ganges: talks continue in Dhaka • Seoul to ease buyback limits • "
-        "Badenoch set to attack EU deal at CBI",
+        "Ganges: routine India–Bangladesh water-sharing review • Seoul "
+        "to ease buyback limits • Badenoch attacks EU deal at CBI",
         f_ar, 912 - lab_w, 912)
-    assert len(also_lines) <= 2, also_lines
+    assert len(also_lines) <= 1, also_lines
     d.text((56, y), lab, font=f_al, fill=NAVY)
-    y = draw_lines(d, 56 + lab_w, y, also_lines, f_ar, INK, 19)
+    y = draw_lines(d, 56 + lab_w, y, also_lines, f_ar, INK, 17)
     y += 8
     d.text((56, y),
            "Sources: Yonhap, Reuters, CNA, BBC, Kyiv Independent, "

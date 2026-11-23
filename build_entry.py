@@ -239,10 +239,10 @@ def main():
     d.text((56, y), "POLITICS — Burnham defends 'landmark' EU deal",
            font=f_sh, fill=NAVY)
     y += 24
-    lines = wrap("Burnham told MPs Treasury estimates put the gain at up "
-                 "to £17bn a year by 2040; Badenoch challenged the figure "
-                 "at the CBI, saying 'could be' was doing a lot of heavy "
-                 "lifting.", f_sb, 912)
+    lines = wrap("Burnham told MPs the deal could add up to £17bn a year "
+                 "by 2040; at the CBI, Badenoch criticised the projected "
+                 "growth, then in the Commons said 'could be' was doing a "
+                 "lot of heavy lifting.", f_sb, 912)
     assert len(lines) <= 2, lines
     y = draw_lines(d, 56, y, lines, f_sb, INK, 22)
     y += 8
